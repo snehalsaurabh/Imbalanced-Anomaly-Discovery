@@ -57,7 +57,22 @@ def run_agent(df: pd.DataFrame, oracle_fn, budget: int) -> np.ndarray:
     # structure to identify diverse or high-information regions — for example,
     # targeting rows with high institution_risk_score, extreme application
     # velocity, or suspicious copy_paste_ratio.
-    query_indices = np.random.choice(n, size=budget, replace=False).tolist()
+    from sklearn.cluster import KMeans
+
+    kmeans = KMeans(n_clusters=50, random_state=42)
+    clusters = kmeans.fit_predict(df.values)
+
+    query_indices = []
+    for c in range(50):
+        idx = np.where(clusters == c)[0]
+        if len(idx) > 0:
+            query_indices.append(int(idx[0]))
+
+    # If < 100 selected, fill remaining randomly
+    remaining = budget - len(query_indices)
+    if remaining > 0:
+        unused = list(set(range(n)) - set(query_indices))
+        query_indices += list(np.random.choice(unused, remaining, replace=False))
 
     # ── Step 2: query the oracle ──────────────────────────────────────────────
     # You can call oracle_fn with all indices at once or in smaller batches.
